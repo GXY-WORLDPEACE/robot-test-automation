@@ -1,0 +1,81 @@
+name: ROS2 Robot Test CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Python and ROS2 Tests
+
+    runs-on: ubuntu-22.04
+
+    timeout-minutes: 20
+
+    steps:
+      # 1. 下载 GitHub 仓库代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. 安装 Python 测试依赖
+      - name: Install Python dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3-pytest \
+            python3-pytest-mock
+
+      # 3. 配置 ROS2 软件源
+      - name: Configure ROS2 repository
+        shell: bash
+        run: |
+          sudo apt-get install -y \
+            software-properties-common \
+            curl \
+            ca-certificates
+
+          sudo add-apt-repository universe -y
+
+          sudo curl -sSL \
+            https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+            -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
+            | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+
+          sudo apt-get update
+
+      # 4. 安装 ROS2 Humble
+      - name: Install ROS2 Humble
+        run: |
+          sudo apt-get install -y ros-humble-ros-base
+
+      # 5. 验证 ROS2 Python 环境
+      - name: Verify ROS2 environment
+        shell: bash
+        run: |
+          source /opt/ros/humble/setup.bash
+
+          /usr/bin/python3 -c "import rclpy; print('ROS2 OK')"
+
+      # 6. 执行全部测试并生成报告
+      - name: Run pytest
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: "42"
+          ROS_LOCALHOST_ONLY: "1"
+        run: |
+          source /opt/ros/humble/setup.bash
+
+          /usr/bin/python3 -m pytest tests/ -v \
+            --junitxml=test-results.xml
+
+      # 7. 上传测试报告
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: robot-test-results
+          path: test-results.xml
+          if-no-files-found: warn
