@@ -11,3 +11,7 @@ htmlcov/
 
 .vscode/
 .idea/
+
+logs/
+test-results.xml
+report.html

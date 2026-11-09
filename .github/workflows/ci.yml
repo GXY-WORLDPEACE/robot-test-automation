@@ -65,17 +65,22 @@ jobs:
         env:
           ROS_DOMAIN_ID: "42"
           ROS_LOCALHOST_ONLY: "1"
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
         run: |
           source /opt/ros/humble/setup.bash
 
-          /usr/bin/python3 -m pytest tests/ -v \
+          /usr/bin/python3 -m pytest \
+            -p pytest_mock \
+            tests/ -v -s \
             --junitxml=test-results.xml
 
       # 7. 上传测试报告
-      - name: Upload test report
+      - name: Upload test reports and logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: robot-test-results
-          path: test-results.xml
+          name: robot-test-artifacts
+          path: |
+            test-results.xml
+            logs/
           if-no-files-found: warn
